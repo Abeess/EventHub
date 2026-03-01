@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Event Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../static/style.css">
+    <link rel="stylesheet" href="../static/admin_login.css">
+    <style>
+        /* Specific overrides for a standalone login page using the global styles */
+        body {
+            background: radial-gradient(circle at center, rgba(0, 84, 97, 0.95) 0%, rgba(0, 54, 62, 0.98) 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .standalone-login {
+            background: var(--bg-card);
+            padding: 3.5rem;
+            width: 100%;
+            max-width: 420px;
+            border-radius: var(--border-radius-lg);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            position: relative;
+            animation: modalScaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+        }
+
+        .login-logo {
+            margin-bottom: 2rem;
+        }
+
+        .login-logo h3 {
+            color: var(--primary-dark);
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .login-logo p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .return-home {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #f1f5f9;
+        }
+
+        .return-home:hover {
+            background: #fee2e2;
+            color: #ef4444;
+            transform: rotate(90deg);
+        }
+
+        .modern-form .input-group {
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="standalone-login">
+        <a href="index.html" class="return-home" title="Return to Home">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </a>
+
+        <div class="login-logo">
+            <!-- Using SVG standard icon for admin -->
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round"
+                style="margin-bottom: 15px; background: rgba(0, 188, 212, 0.1); padding: 12px; border-radius: 50%;">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <h3>Admin Portal</h3>
+            <p>Secure login for event managers</p>
+        </div>
+
+        <form class="modern-form">
+            <div class="input-group">
+                <input class="username" type="text" placeholder="Username" required>
+            </div>
+            <div class="input-group">
+                <input class="password" type="password" placeholder="Password" required>
+            </div>
+            <button class="btn btn-primary btn-submit" type="button"
+                onclick="alert('Admin Authentication currently in development.')">Secure Login</button>
+        </form>
+    </div>
+</body>
+
+</html>

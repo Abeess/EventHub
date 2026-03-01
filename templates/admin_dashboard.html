@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Event Admin Dashboard</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../static/style.css">
+
+    <!-- Chart.js for Reports -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" class="logo" style="text-decoration: none;">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span>Event-Hub</span>
+                </a>
+                <button id="close-sidebar" class="sidebar-toggle-btn mobile-only">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="sidebar-heading">
+                        <span>DASHBOARD</span>
+                    </li>
+                    <li class="active">
+                        <a href="#" data-page="events">
+                            <i class="fa-solid fa-calendar-day"></i>
+                            <span>Events</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-page="students">
+                            <i class="fa-solid fa-users"></i>
+                            <span>Students</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-page="reports">
+                            <i class="fa-solid fa-chart-pie"></i>
+                            <span>Reports</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-page="settings">
+                            <i class="fa-solid fa-gear"></i>
+                            <span>Settings</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="admin_login.html" class="logout-btn">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <div class="toggle-menu-btn" id="open-sidebar">
+                    <i class="fa-solid fa-bars"></i>
+                </div>
+
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="search-input" placeholder="Search events...">
+                </div>
+
+                <div class="top-bar-actions">
+                    <div class="user-profile">
+                        <img src="https://ui-avatars.com/api/?name=Admin+User&background=0D8ABC&color=fff"
+                            alt="Admin Profile">
+                        <div class="user-info">
+                            <span class="name">Admin User</span>
+                            <span class="role">Administrator</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <div class="content-wrapper" id="main-view" style="display: none;">
+                <div class="page-header">
+                    <h1>Dashboard</h1>
+                </div>
+            </div>
+
+            <!-- Events Content -->
+            <div class="content-wrapper" id="events-view">
+                <div class="page-header">
+                    <h1>Events Overview</h1>
+                    <button class="btn-primary" id="create-event-btn">
+                        <i class="fa-solid fa-plus"></i> Create New Event
+                    </button>
+                </div>
+
+                <!-- Metrics Cards -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="card-icon blue">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                        <div class="card-info">
+                            <h3>Total Events</h3>
+                            <p class="number" id="total-events-count">0</p>
+                            <span class="trend up"><i class="fa-solid fa-arrow-up"></i> 12% this month</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="card-icon green">
+                            <i class="fa-solid fa-calendar-days"></i>
+                        </div>
+                        <div class="card-info">
+                            <h3>Upcoming Events</h3>
+                            <p class="number" id="upcoming-events-count">0</p>
+                            <span class="trend up"><i class="fa-solid fa-arrow-up"></i> 5% this week</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Events Table -->
+                <div class="recent-events-section">
+                    <div class="section-header">
+                        <h2>Recent Events</h2>
+                        <a href="#" class="view-all">View All</a>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Event Name</th>
+                                    <th>Organizer</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="events-table-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Students View Content -->
+            <div class="content-wrapper" id="students-view" style="display: none;">
+                <div class="page-header">
+                    <h1>Manage Students & Attendance</h1>
+                </div>
+
+                <div class="recent-events-section">
+                    <div class="section-header">
+                        <h2>Select an Event to Track Attendance</h2>
+                    </div>
+                    <div class="events-grid" id="students-events-grid"
+                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports View Content -->
+            <div class="content-wrapper" id="reports-view" style="display: none;">
+                <div class="page-header">
+                    <h1>Event Reports & Analytics</h1>
+                </div>
+
+                <div class="recent-events-section" style="margin-bottom: 30px;">
+                    <div class="section-header">
+                        <h2>Attendance Overview</h2>
+                    </div>
+                    <!-- Chart Container -->
+                    <div
+                        style="background: white; border-radius: 12px; border: 1px solid var(--border-color); padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); height: 400px; display: flex; justify-content: center; align-items: center;">
+                        <canvas id="attendanceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="recent-events-section">
+                    <div class="section-header">
+                        <h2>Detailed Event Statistics</h2>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Event Name</th>
+                                    <th>Category</th>
+                                    <th>Registered</th>
+                                    <th>Attended</th>
+                                    <th>Attendance Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reports-table-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View Content -->
+            <div class="content-wrapper" id="settings-view" style="display: none;">
+                <div class="page-header">
+                    <h1>Settings</h1>
+                </div>
+
+                <div class="recent-events-section" style="max-width: 600px; margin: 0 auto; display: block;">
+                    <div class="section-header">
+                        <h2>Update Admin Credentials</h2>
+                    </div>
+                    <form id="settings-form" class="modern-form" style="padding: 20px;">
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label for="new-username">New Username (Optional)</label>
+                            <input type="text" id="new-username" name="new_username"
+                                placeholder="Leave blank to keep current">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label for="new-password">New Password</label>
+                            <input type="password" id="new-password" name="new_password" required
+                                placeholder="Enter new password">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label for="confirm-password">Confirm New Password</label>
+                            <input type="password" id="confirm-password" name="confirm_password" required
+                                placeholder="Confirm new password">
+                        </div>
+                        <div class="form-actions" style="margin-top: 20px;">
+                            <button type="submit" class="btn btn-primary" id="update-creds-btn"
+                                style="width: 100%; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer;">Update
+                                Credentials</button>
+                        </div>
+                        <div id="settings-message" style="margin-top: 15px; text-align: center; font-weight: 500;">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Event Modal -->
+    <div id="add-event-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Event</h2>
+                <button class="close-modal" id="close-modal-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-event-form" enctype="multipart/form-data">
+                    <input type="hidden" id="event-id" name="id">
+                    <div class="form-group">
+                        <label for="event-name">Event Name</label>
+                        <input type="text" id="event-name" name="name" required placeholder="Ex: Tech Hackathon 2024">
+                    </div>
+                    <div class="form-group">
+                        <label for="event-description">Description</label>
+                        <textarea id="event-description" name="description" required
+                            placeholder="Details about the event..." rows="3"
+                            style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 6px;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="event-image">Event Image</label>
+                        <input type="file" id="event-image" name="image" accept="image/*" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="event-date">Date</label>
+                            <input type="date" id="event-date" name="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="event-category">Category</label>
+                            <select id="event-category" name="category" required>
+                                <option value="Technology">Technology</option>
+                                <option value="Cultural">Cultural</option>
+                                <option value="Social">Social</option>
+                                <option value="Sports">Sports</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="event-registration-link">Google Form Link (Optional)</label>
+                        <input type="url" id="event-registration-link" name="registration_link"
+                            placeholder="Ex: https://forms.gle/...">
+                        <small style="color: var(--text-light); font-size: 0.8rem;">Used for the Register Now
+                            button.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="event-responses-link">Google Sheet Responses Link (Optional)</label>
+                        <input type="url" id="event-responses-link" name="responses_sheet_link"
+                            placeholder="Ex: https://docs.google.com/spreadsheets/d/...">
+                        <small style="color: var(--text-light); font-size: 0.8rem;">Open the Google Form → Responses →
+                            Click green Sheets icon → Copy spreadsheet URL and paste here.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="event-organizer">Organizer</label>
+                        <input type="text" id="event-organizer" name="organizer" required
+                            placeholder="Ex: Computer Science Dept">
+                    </div>
+                    <div class="form-group">
+                        <label for="event-status">Status</label>
+                        <select id="event-status" name="status">
+                            <option value="Upcoming">Upcoming</option>
+                            <option value="Ongoing">Ongoing</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancel-btn">Cancel</button>
+                        <button type="submit" class="btn-primary">Add Event</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Students Modal -->
+    <div id="manage-students-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 650px;">
+            <div class="modal-header">
+                <h2 id="students-modal-title">Manage Students</h2>
+                <button class="close-modal" id="close-students-modal-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px;">
+                    <div id="sync-status" style="color: var(--primary-color); font-size: 0.9rem; display: none;">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Auto-syncing participants...
+                    </div>
+                    <input type="hidden" id="student-event-id">
+                </div>
+
+                <hr style="margin: 20px 0; border-color: var(--border-color);">
+
+                <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Registered Students</h3>
+                <div class="table-container" style="max-height: 300px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Attended</th>
+                            </tr>
+                        </thead>
+                        <tbody id="students-table-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 20px; text-align: right;">
+                    <button class="btn-primary" id="save-attendance-btn">Save Attendance</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../static/script.js"></script>
+</body>
+
+</html>

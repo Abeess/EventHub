@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Hub - Discover & Organize</title>
+    <!-- New Premium Font Stack -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../static/public_styles.css">
+</head>
+
+<body>
+    <header class="navbar">
+        <div class="logo">
+            <h1 class="logo-text">Event Hub</h1>
+        </div>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#events">Events</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+        <div class="auth-buttons">
+            <!-- <button id="get-notified-btn" class="btn btn-primary">Get Notified</button> -->
+        </div>
+    </header>
+
+    <main>
+        <section id="home" class="hero">
+            <div class="hero-content">
+                <h2>Discover Outstanding Events</h2>
+                <p>Join the community and find events that matter to you.</p>
+                <div class="search-bar">
+                    <input type="text" placeholder="Search events here...">
+                    <button type="button">Search</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="events" class="events-section">
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="upcoming">Upcoming</button>
+                <button class="filter-btn" data-filter="ongoing">Ongoing</button>
+                <button class="filter-btn" data-filter="completed">Completed</button>
+            </div>
+
+            <div class="events-grid">
+                <!-- Event Cards will be dynamically added via script.js -->
+            </div>
+        </section>
+    </main>
+
+    <section id="about" class="about-section">
+        <div class="section-container">
+            <h2 class="section-title">About Event Hub</h2>
+            <p>Welcome to <strong>Event Hub</strong>, the official event management platform for the College of
+                Engineering Adoor. Our mission is to streamline campus activities, fostering a vibrant community where
+                innovation meets collaboration.</p>
+            <p>Designed by students, for students, Event Hub serves as a central repository for all workshops, seminars,
+                cultural fests, and technical symposiums. Whether you're looking to showcase your talents, learn new
+                skills, or simply network with peers, Event Hub ensures you never miss out on the action.</p>
+            <p>Join us in celebrating creativity and technical excellence at CEA!</p>
+        </div>
+    </section>
+
+    <section id="contact" class="contact-section">
+        <div class="section-container">
+            <h2 class="section-title">Contact</h2>
+            <div style="font-size: 1.15rem; color: var(--text-muted); line-height: 1.9; margin-top: 1.5rem;">
+                <p><strong style="color: var(--text-main);">College of Engineering Adoor</strong></p>
+                <p>Manakala PO, Adoor</p>
+                <p>Pathanamthitta, Kerala</p>
+                <p>Pin: 691551</p>
+                <p style="margin-top: 1rem;">Email: <a href="mailto:principal@cea.ac.in"
+                        style="color: var(--accent-color); text-decoration: none; font-weight: 600;">principal@cea.ac.in</a>
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Subscription Modal -->
+    <div id="notify-modal" class="modal">
+        <div class="modal-content">
+            <div class="close-btn">&times;</div>
+            <h2>Stay Informed!</h2>
+            <p>Get reminders about events tailored for you.</p>
+            <form id="notify-form" class="modern-form">
+                <div class="input-group">
+                    <input type="text" placeholder="Your Name" required>
+                </div>
+                <div class="input-group">
+                    <input type="email" placeholder="Your Email" required>
+                </div>
+                <div class="input-group">
+                    <select required>
+                        <option value="" disabled selected>Select Department/Year</option>
+                        <option value="CSE">Computer Science (CSE)</option>
+                        <option value="ECE">Electronics (ECE)</option>
+                        <option value="ME">Mechanical (ME)</option>
+                        <option value="EEE">Electrical (EEE)</option>
+                        <option value="First Year">First Year</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-submit">Subscribe Now</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Deprecated Inline Login Section omitted; rely on dedicated admin_login.html page -->
+
+    <footer>
+        <p>&copy; 2026 <a href="/admin" class="footer-link">Event Hub</a>. All rights reserved.</p>
+    </footer>
+
+    <script src="../static/public_script.js"></script>
+</body>
+
+</html>

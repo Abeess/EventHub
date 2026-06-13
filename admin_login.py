@@ -79,7 +79,19 @@ def get_dynamic_event_status(event_date_str):
     except Exception:
         return "Unknown"
 
-def send_new_event_email(admin_id, event_name, event_date, event_description):
+def format_event_date(event_date):
+    try:
+        if isinstance(event_date, str):
+            dt = datetime.strptime(event_date.strip(), "%Y-%m-%d")
+        elif isinstance(event_date, (date, datetime)):
+            dt = event_date
+        else:
+            return str(event_date)
+        return dt.strftime("%B %d, %Y")
+    except Exception:
+        return str(event_date)
+
+def send_new_event_email(admin_id, event_name, event_date, event_description, event_category, event_id):
     """Sends email only to subscribers for the specific college (admin_id)."""
     with app.app_context():
         try:
@@ -91,6 +103,19 @@ def send_new_event_email(admin_id, event_name, event_date, event_description):
                 
             recipients = [sub['email'] for sub in subscribers]
             
+            # Fetch college info
+            college_name = "Event Hub"
+            college_address = "Event Hub"
+            try:
+                admin_resp = supabase.table("admin_username_pass").select("college_name").eq("id", admin_id).execute()
+                if admin_resp.data:
+                    college_name = admin_resp.data[0].get("college_name", "Event Hub")
+                    college_address = college_name
+                    if "Adoor" in college_name:
+                        college_address = "College of Engineering Adoor, Manakala PO, Pathanamthitta, Kerala 691551"
+            except Exception as db_err:
+                logger.error(f"Error fetching college details: {db_err}")
+            
             msg = Message(
                 subject=f"New Event Created: {event_name}!",
                 sender=app.config.get("MAIL_USERNAME"),
@@ -98,32 +123,128 @@ def send_new_event_email(admin_id, event_name, event_date, event_description):
             )
             
             safe_name = escape(event_name)
-            safe_date = escape(str(event_date))
             safe_desc = escape(event_description)
+            safe_category = escape(event_category or "Event")
+            safe_college = escape(college_name)
+            safe_address = escape(college_address)
+            formatted_date = format_event_date(event_date)
+            safe_date = escape(formatted_date)
             
-            msg.html = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
-                    <h1 style="color: white; margin: 0;">🎉 New Event Created!</h1>
-                </div>
-                <div style="background: #f9f9f9; padding: 25px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0;">
-                    <h2 style="color: #333; margin-top: 0;">{safe_name}</h2>
-                    <p style="color: #555;"><strong>📅 Date:</strong> {safe_date}</p>
-                    <p style="color: #555;"><strong>📝 Description:</strong></p>
-                    <p style="color: #666; background: white; padding: 15px; border-radius: 5px; border-left: 4px solid #11998e;">{safe_desc}</p>
-                    <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
-                    <p style="color: #888; font-size: 12px;">Visit the EventHub website to learn more and register!</p>
-                </div>
-            </div>
-            """
+            try:
+                url_root = request.url_root
+            except Exception:
+                url_root = "http://127.0.0.1:5000/"
+                
+            event_url = f"{url_root}event-details.html?id={event_id}" if event_id else url_root
+            unsubscribe_url = f"{url_root}unsubscribe?email={{email}}&admin_id={admin_id}"
             
-            mail.send(msg)
+            # We use individual personalization if possible, or standard fallback URL
+            # Note: For BCC, we will send to individual subscribers so we can personalize the unsubscribe link
+            # and name. This makes the Unsubscribe link work perfectly.
+            # To be efficient, we use Flask-Mail's connection context.
+            with mail.connect() as conn:
+                for sub in subscribers:
+                    sub_email = sub['email']
+                    personal_unsubscribe_url = f"{url_root}unsubscribe?email={sub_email}&admin_id={admin_id}"
+                    
+                    personal_msg = Message(
+                        subject=f"🎉 New Event Added: {event_name}",
+                        sender=app.config.get("MAIL_USERNAME"),
+                        recipients=[sub_email]
+                    )
+                    
+                    personal_msg.html = f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>🎉 New Event Added: {safe_name}</title>
+                    </head>
+                    <body style="margin: 0; padding: 40px 0; background-color: #0c3137; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
+                            <tr>
+                                <td align="center" style="background-color: #0c3137; padding: 20px 10px;">
+                                    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.25);">
+                                        <tr>
+                                            <td align="center" style="background: linear-gradient(135deg, #096875 0%, #1ab2a7 100%); padding: 40px 30px; text-align: center;">
+                                                <span style="font-size: 11px; font-weight: 700; color: #a5f3fc; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; display: inline-block;">EVENT HUB</span>
+                                                <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 5px 0 10px 0; letter-spacing: -0.5px;">🎉 New Event Added</h1>
+                                                <p style="color: #e2fbfb; font-size: 15px; margin: 0; font-weight: 400; opacity: 0.9;">{safe_college}</p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 40px 35px 35px 35px;">
+                                                <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
+                                                    <tr>
+                                                        <td style="background-color: #e6f6f6; padding: 6px 16px; border-radius: 20px;">
+                                                            <span style="color: #0f7685; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; display: inline-block; line-height: 1;">{safe_category}</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                                <h2 style="color: #0f292d; font-size: 26px; font-weight: 700; margin: 0 0 24px 0; line-height: 1.2;">{safe_name}</h2>
+                                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 25px;">
+                                                    <tr>
+                                                        <td width="44" valign="top">
+                                                            <div style="background-color: #eef2f6; border-radius: 8px; width: 44px; height: 44px; text-align: center; line-height: 44px; font-size: 22px;">📅</div>
+                                                        </td>
+                                                        <td valign="middle" style="padding-left: 15px;">
+                                                            <div style="font-size: 11px; font-weight: 700; color: #879ca0; letter-spacing: 0.5px; text-transform: uppercase; line-height: 1;">DATE</div>
+                                                            <div style="font-size: 16px; font-weight: 600; color: #0f292d; margin-top: 4px;">{safe_date}</div>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                                <div style="font-size: 11px; font-weight: 700; color: #879ca0; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px;">DESCRIPTION</div>
+                                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 30px;">
+                                                    <tr>
+                                                        <td style="background-color: #f5f8f9; border-left: 4px solid #1493a5; padding: 18px 20px; border-radius: 0 8px 8px 0;">
+                                                            <p style="font-size: 15px; line-height: 1.6; color: #2d3e40; margin: 0; white-space: pre-line;">{safe_desc}</p>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                    <tr>
+                                                        <td align="center">
+                                                            <table border="0" cellpadding="0" cellspacing="0" style="margin: 10px auto;">
+                                                                <tr>
+                                                                    <td align="center" style="background-color: #1493a5; border-radius: 8px;">
+                                                                        <a href="{event_url}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 8px; border: 1px solid #1493a5; letter-spacing: 0.5px;">View Event Details</a>
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                                <hr style="border: none; border-top: 1px solid #e8eff0; margin: 35px 0 25px 0;">
+                                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                    <tr>
+                                                        <td align="center" style="color: #879ca0; font-size: 13px; line-height: 1.6; text-align: center;">
+                                                            <p style="margin: 0 0 10px 0;">You're receiving this because you subscribed for updates from Event Hub.</p>
+                                                            <p style="margin: 0 0 15px 0;">
+                                                                <a href="{personal_unsubscribe_url}" target="_blank" style="color: #1493a5; text-decoration: none; font-weight: 600;">Unsubscribe</a>
+                                                                <span style="color: #cbd5e1; margin: 0 8px;">•</span>
+                                                                <a href="{url_root}" target="_blank" style="color: #1493a5; text-decoration: none; font-weight: 600;">Visit Event Hub</a>
+                                                            </p>
+                                                            <span style="font-size: 11px; color: #a0b2b5; display: block; margin-top: 10px;">{safe_address}</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </body>
+                    </html>
+                    """
+                    conn.send(personal_msg)
             return True
         except Exception as e:
             logger.error(f"Error sending email notifications: {e}")
             return False
 
-def send_event_update_email(admin_id, event_name, event_date, event_description):
+def send_event_update_email(admin_id, event_name, event_date, event_description, event_category, event_id):
     """Sends email to subscribers when an event is updated."""
     with app.app_context():
         try:
@@ -135,33 +256,131 @@ def send_event_update_email(admin_id, event_name, event_date, event_description)
                 
             recipients = [sub['email'] for sub in subscribers]
             
-            msg = Message(
-                subject=f"Event Updated: {event_name}",
-                sender=app.config.get("MAIL_USERNAME"),
-                bcc=recipients
-            )
+            # Fetch college info
+            college_name = "Event Hub"
+            college_address = "Event Hub"
+            try:
+                admin_resp = supabase.table("admin_username_pass").select("college_name").eq("id", admin_id).execute()
+                if admin_resp.data:
+                    college_name = admin_resp.data[0].get("college_name", "Event Hub")
+                    college_address = college_name
+                    if "Adoor" in college_name:
+                        college_address = "College of Engineering Adoor, Manakala PO, Pathanamthitta, Kerala 691551"
+            except Exception as db_err:
+                logger.error(f"Error fetching college details: {db_err}")
             
             safe_name = escape(event_name)
-            safe_date = escape(str(event_date))
             safe_desc = escape(event_description)
+            safe_category = escape(event_category or "Event")
+            safe_college = escape(college_name)
+            safe_address = escape(college_address)
+            formatted_date = format_event_date(event_date)
+            safe_date = escape(formatted_date)
             
-            msg.html = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
-                    <h1 style="color: white; margin: 0;">🔔 Event Updated</h1>
-                </div>
-                <div style="background: #f9f9f9; padding: 25px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0;">
-                    <h2 style="color: #333; margin-top: 0;">{safe_name}</h2>
-                    <p style="color: #555;"><strong>📅 Date:</strong> {safe_date}</p>
-                    <p style="color: #555;"><strong>📝 Description:</strong></p>
-                    <p style="color: #666; background: white; padding: 15px; border-radius: 5px; border-left: 4px solid #667eea;">{safe_desc}</p>
-                    <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
-                    <p style="color: #888; font-size: 12px;">This event has been updated. Please check the latest details on EventHub.</p>
-                </div>
-            </div>
-            """
+            try:
+                url_root = request.url_root
+            except Exception:
+                url_root = "http://127.0.0.1:5000/"
+                
+            event_url = f"{url_root}event-details.html?id={event_id}" if event_id else url_root
             
-            mail.send(msg)
+            with mail.connect() as conn:
+                for sub in subscribers:
+                    sub_email = sub['email']
+                    personal_unsubscribe_url = f"{url_root}unsubscribe?email={sub_email}&admin_id={admin_id}"
+                    
+                    personal_msg = Message(
+                        subject=f"🔔 Event Updated: {event_name}",
+                        sender=app.config.get("MAIL_USERNAME"),
+                        recipients=[sub_email]
+                    )
+                    
+                    personal_msg.html = f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>🔔 Event Updated: {safe_name}</title>
+                    </head>
+                    <body style="margin: 0; padding: 40px 0; background-color: #0c3137; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
+                            <tr>
+                                <td align="center" style="background-color: #0c3137; padding: 20px 10px;">
+                                    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.25);">
+                                        <tr>
+                                            <td align="center" style="background: linear-gradient(135deg, #096875 0%, #1ab2a7 100%); padding: 40px 30px; text-align: center;">
+                                                <span style="font-size: 11px; font-weight: 700; color: #a5f3fc; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; display: inline-block;">EVENT HUB</span>
+                                                <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 5px 0 10px 0; letter-spacing: -0.5px;">🔔 Event Updated</h1>
+                                                <p style="color: #e2fbfb; font-size: 15px; margin: 0; font-weight: 400; opacity: 0.9;">{safe_college}</p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 40px 35px 35px 35px;">
+                                                <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
+                                                    <tr>
+                                                        <td style="background-color: #e6f6f6; padding: 6px 16px; border-radius: 20px;">
+                                                            <span style="color: #0f7685; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; display: inline-block; line-height: 1;">{safe_category}</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                                <h2 style="color: #0f292d; font-size: 26px; font-weight: 700; margin: 0 0 24px 0; line-height: 1.2;">{safe_name}</h2>
+                                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 25px;">
+                                                    <tr>
+                                                        <td width="44" valign="top">
+                                                            <div style="background-color: #eef2f6; border-radius: 8px; width: 44px; height: 44px; text-align: center; line-height: 44px; font-size: 22px;">📅</div>
+                                                        </td>
+                                                        <td valign="middle" style="padding-left: 15px;">
+                                                            <div style="font-size: 11px; font-weight: 700; color: #879ca0; letter-spacing: 0.5px; text-transform: uppercase; line-height: 1;">DATE</div>
+                                                            <div style="font-size: 16px; font-weight: 600; color: #0f292d; margin-top: 4px;">{safe_date}</div>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                                <div style="font-size: 11px; font-weight: 700; color: #879ca0; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px;">DESCRIPTION</div>
+                                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 30px;">
+                                                    <tr>
+                                                        <td style="background-color: #f5f8f9; border-left: 4px solid #1493a5; padding: 18px 20px; border-radius: 0 8px 8px 0;">
+                                                            <p style="font-size: 15px; line-height: 1.6; color: #2d3e40; margin: 0; white-space: pre-line;">{safe_desc}</p>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                    <tr>
+                                                        <td align="center">
+                                                            <table border="0" cellpadding="0" cellspacing="0" style="margin: 10px auto;">
+                                                                <tr>
+                                                                    <td align="center" style="background-color: #1493a5; border-radius: 8px;">
+                                                                        <a href="{event_url}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 8px; border: 1px solid #1493a5; letter-spacing: 0.5px;">View Event Details</a>
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                                <hr style="border: none; border-top: 1px solid #e8eff0; margin: 35px 0 25px 0;">
+                                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                    <tr>
+                                                        <td align="center" style="color: #879ca0; font-size: 13px; line-height: 1.6; text-align: center;">
+                                                            <p style="margin: 0 0 10px 0;">You're receiving this because you subscribed for updates from Event Hub.</p>
+                                                            <p style="margin: 0 0 15px 0;">
+                                                                <a href="{personal_unsubscribe_url}" target="_blank" style="color: #1493a5; text-decoration: none; font-weight: 600;">Unsubscribe</a>
+                                                                <span style="color: #cbd5e1; margin: 0 8px;">•</span>
+                                                                <a href="{url_root}" target="_blank" style="color: #1493a5; text-decoration: none; font-weight: 600;">Visit Event Hub</a>
+                                                            </p>
+                                                            <span style="font-size: 11px; color: #a0b2b5; display: block; margin-top: 10px;">{safe_address}</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </body>
+                    </html>
+                    """
+                    conn.send(personal_msg)
             logger.info(f"Update email sent to {len(recipients)} subscribers.")
             return True
         except Exception as e:
@@ -202,6 +421,42 @@ def subscribe():
             return jsonify({"error": "This email is already subscribed to this college."}), 400
         logger.error(f"Supabase error: {e}")
         return jsonify({"error": "An error occurred while subscribing."}), 500
+
+@app.route("/unsubscribe", methods=["GET", "POST"])
+def unsubscribe():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        admin_id = request.form.get("admin_id")
+        
+        if not email or not admin_id:
+            return jsonify({"error": "Email and College Code are required"}), 400
+            
+        try:
+            # Check if subscriber exists for this admin
+            sub_check = supabase.table("subscribers").select("*").eq("email", email).eq("admin_id", admin_id).execute()
+            if not sub_check.data:
+                return jsonify({"error": "Subscription not found for this email and college."}), 404
+                
+            supabase.table("subscribers").update({"status": "unsubscribed"}).eq("email", email).eq("admin_id", admin_id).execute()
+            return jsonify({"success": True, "message": "Successfully unsubscribed!"})
+        except Exception as e:
+            logger.error(f"Unsubscribe error: {e}")
+            return jsonify({"error": "An error occurred while unsubscribing."}), 500
+            
+    # GET method: Render unsubscribe confirmation page
+    admin_id = request.args.get("admin_id")
+    email = request.args.get("email", "")
+    
+    college_name = ""
+    if admin_id:
+        try:
+            admin_resp = supabase.table("admin_username_pass").select("college_name").eq("id", admin_id).execute()
+            if admin_resp.data:
+                college_name = admin_resp.data[0].get("college_name", "")
+        except Exception:
+            pass
+            
+    return render_template("unsubscribe.html", admin_id=admin_id, email=email, college_name=college_name)
 
 @app.route("/event-details.html")
 def event_details():
@@ -400,7 +655,7 @@ def create_event():
         new_id = response.data[0]['id'] if response.data else None
         
         try:
-            send_new_event_email(session["admin_id"], name, date, description)
+            send_new_event_email(session["admin_id"], name, date, description, category, new_id)
         except Exception as email_err:
             logger.warning(f"Failed to send email updates: {email_err}")
         
@@ -452,7 +707,7 @@ def update_event(id):
         
         # Send update notification email to subscribers
         try:
-            send_event_update_email(session["admin_id"], name, date, description)
+            send_event_update_email(session["admin_id"], name, date, description, category, id)
         except Exception as email_err:
             logger.warning(f"Failed to send update email: {email_err}")
         

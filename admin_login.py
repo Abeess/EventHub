@@ -3,6 +3,7 @@ import re
 import string
 import random
 import logging
+import threading
 from datetime import datetime, date
 
 from dotenv import load_dotenv
@@ -91,7 +92,7 @@ def format_event_date(event_date):
     except Exception:
         return str(event_date)
 
-def send_new_event_email(admin_id, event_name, event_date, event_description, event_category, event_id):
+def send_new_event_email(admin_id, event_name, event_date, event_description, event_category, event_id, url_root=None):
     """Sends email only to subscribers for the specific college (admin_id)."""
     with app.app_context():
         try:
@@ -116,12 +117,6 @@ def send_new_event_email(admin_id, event_name, event_date, event_description, ev
             except Exception as db_err:
                 logger.error(f"Error fetching college details: {db_err}")
             
-            msg = Message(
-                subject=f"New Event Created: {event_name}!",
-                sender=app.config.get("MAIL_USERNAME"),
-                bcc=recipients
-            )
-            
             safe_name = escape(event_name)
             safe_desc = escape(event_description)
             safe_category = escape(event_category or "Event")
@@ -130,18 +125,11 @@ def send_new_event_email(admin_id, event_name, event_date, event_description, ev
             formatted_date = format_event_date(event_date)
             safe_date = escape(formatted_date)
             
-            try:
-                url_root = request.url_root
-            except Exception:
+            if not url_root:
                 url_root = "http://127.0.0.1:5000/"
                 
             event_url = f"{url_root}event-details.html?id={event_id}" if event_id else url_root
-            unsubscribe_url = f"{url_root}unsubscribe?email={{email}}&admin_id={admin_id}"
             
-            # We use individual personalization if possible, or standard fallback URL
-            # Note: For BCC, we will send to individual subscribers so we can personalize the unsubscribe link
-            # and name. This makes the Unsubscribe link work perfectly.
-            # To be efficient, we use Flask-Mail's connection context.
             with mail.connect() as conn:
                 for sub in subscribers:
                     sub_email = sub['email']
@@ -244,7 +232,7 @@ def send_new_event_email(admin_id, event_name, event_date, event_description, ev
             logger.error(f"Error sending email notifications: {e}")
             return False
 
-def send_event_update_email(admin_id, event_name, event_date, event_description, event_category, event_id):
+def send_event_update_email(admin_id, event_name, event_date, event_description, event_category, event_id, url_root=None):
     """Sends email to subscribers when an event is updated."""
     with app.app_context():
         try:
@@ -277,9 +265,7 @@ def send_event_update_email(admin_id, event_name, event_date, event_description,
             formatted_date = format_event_date(event_date)
             safe_date = escape(formatted_date)
             
-            try:
-                url_root = request.url_root
-            except Exception:
+            if not url_root:
                 url_root = "http://127.0.0.1:5000/"
                 
             event_url = f"{url_root}event-details.html?id={event_id}" if event_id else url_root
@@ -654,8 +640,15 @@ def create_event():
         response = supabase.table("events").insert(data).execute()
         new_id = response.data[0]['id'] if response.data else None
         
+        # Send email notifications in the background so a slow SMTP
+        # connection can't block/crash this request.
         try:
-            send_new_event_email(session["admin_id"], name, date, description, category, new_id)
+            url_root = request.url_root
+            threading.Thread(
+                target=send_new_event_email,
+                args=(session["admin_id"], name, date, description, category, new_id, url_root),
+                daemon=True
+            ).start()
         except Exception as email_err:
             logger.warning(f"Failed to send email updates: {email_err}")
         
@@ -705,9 +698,15 @@ def update_event(id):
         
         supabase.table("events").update(data).eq("id", id).execute()
         
-        # Send update notification email to subscribers
+        # Send update notification email to subscribers in the background
+        # so a slow SMTP connection can't block/crash this request.
         try:
-            send_event_update_email(session["admin_id"], name, date, description, category, id)
+            url_root = request.url_root
+            threading.Thread(
+                target=send_event_update_email,
+                args=(session["admin_id"], name, date, description, category, id, url_root),
+                daemon=True
+            ).start()
         except Exception as email_err:
             logger.warning(f"Failed to send update email: {email_err}")
         

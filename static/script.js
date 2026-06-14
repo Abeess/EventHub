@@ -44,6 +44,15 @@ const studentsModalTitle = document.getElementById('students-modal-title');
 // Event Data Array
 let events = [];
 
+// Helper to build a usable image URL from image_path (supports full URLs and local filenames)
+function getEventImageSrc(imagePath) {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        return imagePath;
+    }
+    return `/static/uploads/${imagePath}`;
+}
+
 // Toggle Sidebar
 if (openSidebarBtn) {
     openSidebarBtn.addEventListener('click', () => {
@@ -215,8 +224,9 @@ function renderEvents(limit = 5, data = events) { // Default limit to 5
         const options = { year: 'numeric', month: 'short', day: '2-digit' };
         const formattedDate = dateObj.toLocaleDateString('en-US', options);
 
-        const imgHtml = event.image_path
-            ? `<img src="/static/uploads/${event.image_path}" style="width:100%; height:100%; object-fit:cover;">`
+        const imageSrc = getEventImageSrc(event.image_path);
+        const imgHtml = imageSrc
+            ? `<img src="${imageSrc}" style="width:100%; height:100%; object-fit:cover;">`
             : `<i class="fa-solid ${styles.icon}" style="color: ${styles.color};"></i>`;
 
         const tr = document.createElement('tr');

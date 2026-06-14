@@ -28,14 +28,16 @@ supabase_url: str = os.environ.get("SUPABASE_URL")
 supabase_key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(supabase_url, supabase_key)
 
-# ===== Email Configuration =====
-
-app.config['MAIL_SERVER'] = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+# ===== Email Configuration (SMTP via Brevo) =====
+app.config['MAIL_SERVER'] = os.getenv("MAIL_SERVER", "smtp-relay.brevo.com")
 app.config['MAIL_PORT'] = int(os.getenv("MAIL_PORT", 587))
 app.config['MAIL_USE_TLS'] = os.getenv("MAIL_USE_TLS", "True").lower() == "true"
 app.config['MAIL_USE_SSL'] = os.getenv("MAIL_USE_SSL", "False").lower() == "true"
-app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")
-app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
+app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")  # Brevo SMTP login
+app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")  # Brevo SMTP key
+
+# The "From" address shown to recipients (must be verified in Brevo)
+MAIL_SENDER_EMAIL = os.getenv("MAIL_SENDER_EMAIL", "notification.event@gmail.com")
 
 mail = Mail(app)
 
@@ -134,15 +136,14 @@ def send_new_event_email(admin_id, event_name, event_date, event_description, ev
                 for sub in subscribers:
                     sub_email = sub['email']
                     personal_unsubscribe_url = f"{url_root}unsubscribe?email={sub_email}&admin_id={admin_id}"
-                    
+
                     personal_msg = Message(
                         subject=f"🎉 New Event Added: {event_name}",
-                        sender=app.config.get("MAIL_USERNAME"),
+                        sender=MAIL_SENDER_EMAIL,
                         recipients=[sub_email]
                     )
-                    
+
                     personal_msg.html = f"""
-                    <!DOCTYPE html>
                     <html>
                     <head>
                         <meta charset="utf-8">
@@ -274,13 +275,13 @@ def send_event_update_email(admin_id, event_name, event_date, event_description,
                 for sub in subscribers:
                     sub_email = sub['email']
                     personal_unsubscribe_url = f"{url_root}unsubscribe?email={sub_email}&admin_id={admin_id}"
-                    
+
                     personal_msg = Message(
                         subject=f"🔔 Event Updated: {event_name}",
-                        sender=app.config.get("MAIL_USERNAME"),
+                        sender=MAIL_SENDER_EMAIL,
                         recipients=[sub_email]
                     )
-                    
+
                     personal_msg.html = f"""
                     <!DOCTYPE html>
                     <html>

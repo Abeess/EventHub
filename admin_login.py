@@ -46,6 +46,33 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# ===== Supabase Storage (for event images) =====
+STORAGE_BUCKET = "eventhub-images"
+
+def upload_image_to_supabase(file_obj, filename):
+    """Uploads a file to Supabase Storage and returns its public URL, or None on failure."""
+    try:
+        file_bytes = file_obj.read()
+        # Use a unique-ish path to avoid collisions
+        unique_name = f"{int(datetime.now().timestamp())}_{filename}"
+        ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+        content_type_map = {
+            'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+            'gif': 'image/gif', 'webp': 'image/webp'
+        }
+        content_type = content_type_map.get(ext, 'application/octet-stream')
+
+        supabase.storage.from_(STORAGE_BUCKET).upload(
+            path=unique_name,
+            file=file_bytes,
+            file_options={"content-type": content_type}
+        )
+        public_url = supabase.storage.from_(STORAGE_BUCKET).get_public_url(unique_name)
+        return public_url
+    except Exception as e:
+        logger.error(f"Error uploading image to Supabase storage: {e}")
+        return None
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -623,9 +650,7 @@ def create_event():
             file = request.files['image']
             if file and file.filename != '' and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(file_path)
-                image_path = filename
+                image_path = upload_image_to_supabase(file, filename)
 
         # Dynamic status will be calculated on fetch, but we store something initial
         initial_status = get_dynamic_event_status(date)
@@ -684,9 +709,9 @@ def update_event(id):
             file = request.files['image']
             if file and file.filename != '' and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(file_path)
-                image_path = filename
+                uploaded_url = upload_image_to_supabase(file, filename)
+                if uploaded_url:
+                    image_path = uploaded_url
 
         status = get_dynamic_event_status(date)
 
@@ -732,12 +757,14 @@ def delete_event(id):
         supabase.table("events").delete().eq("id", id).execute()
         
         if image_path:
-            image_file = os.path.join(app.config['UPLOAD_FOLDER'], image_path)
-            if os.path.exists(image_file):
-                try:
-                    os.remove(image_file)
-                except OSError as file_err:
-                    logger.warning(f" Could not delete image file {image_file}: {file_err}")
+            try:
+                # image_path is a Supabase public URL; extract the object path after the bucket name
+                marker = f"/{STORAGE_BUCKET}/"
+                if marker in image_path:
+                    object_path = image_path.split(marker, 1)[1]
+                    supabase.storage.from_(STORAGE_BUCKET).remove([object_path])
+            except Exception as file_err:
+                logger.warning(f"Could not delete image from storage {image_path}: {file_err}")
                     
         return jsonify({"success": True, "message": "Event deleted"})
     except Exception as e:

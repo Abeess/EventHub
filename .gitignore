@@ -1,3 +1,4 @@
+.history/
 # Environment & secrets
 .env
 credentials.json

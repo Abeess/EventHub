@@ -111,6 +111,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getImageUrl(event) {
         if (event.image_path) {
+            // image_path may be a full URL (e.g. Supabase Storage public URL)
+            // or a legacy local filename stored under /static/uploads/
+            if (event.image_path.startsWith('http://') || event.image_path.startsWith('https://')) {
+                return event.image_path;
+            }
             return `/static/uploads/${event.image_path}`;
         }
         return 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1000&q=80';

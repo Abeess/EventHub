@@ -37,7 +37,7 @@ app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")  # Brevo SMTP login
 app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")  # Brevo SMTP key
 
 # The "From" address shown to recipients (must be verified in Brevo)
-MAIL_SENDER_EMAIL = os.getenv("MAIL_SENDER_EMAIL", "muhammedabees62@gmail.com")
+MAIL_SENDER_EMAIL = os.getenv("MAIL_SENDER_EMAIL", "muhammedabees@gmail.com")
 
 mail = Mail(app)
 
